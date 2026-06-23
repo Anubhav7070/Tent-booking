@@ -33,6 +33,16 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label iocl-form-label">In-Principal Approval Document <span class="text-danger">*</span></label>
+                                <asp:FileUpload ID="fileDocument" runat="server" CssClass="form-control iocl-form-control" accept=".pdf,.png,.jpg,.jpeg" required="required" />
+                                <div class="form-text text-muted small">Accepted formats: PDF, PNG, JPG, JPEG (Max 5MB)</div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Items Selection Section -->
                     <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">

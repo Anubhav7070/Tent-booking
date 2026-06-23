@@ -37,6 +37,11 @@ Public Class AdminRequestDetails
         rptItems.DataSource = req.Items
         rptItems.DataBind()
 
+        If Not String.IsNullOrEmpty(req.InPrincipalDocumentPath) Then
+            pnlDocument.Visible = True
+            hlDocument.NavigateUrl = req.InPrincipalDocumentPath
+        End If
+
         If req.Status = RequestStatus.Rejected AndAlso Not String.IsNullOrEmpty(req.RejectionReason) Then
             pnlRejection.Visible = True
             lblRejectionReason.Text = req.RejectionReason
@@ -94,6 +99,7 @@ Public Class AdminRequestDetails
             Case RequestStatus.Approved : Return "<span class=""badge bg-success"">Approved</span>"
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
+            Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
             Case Else : Return "<span class=""badge bg-warning text-dark"">Pending</span>"
         End Select
     End Function

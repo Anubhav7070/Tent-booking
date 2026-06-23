@@ -57,6 +57,7 @@ Public Class AdminRequests
             Case RequestStatus.Approved : Return "<span class=""badge bg-success"">Approved</span>"
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
+            Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
             Case Else : Return "<span class=""badge bg-warning text-dark"">Pending</span>"
         End Select
     End Function

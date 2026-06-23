@@ -119,6 +119,7 @@ Public Enum RequestStatus
     Rejected = 2
     Cancelled = 3
     Waitlisted = 4
+    Returned = 5
 End Enum
 
 Public Enum ApprovalStage

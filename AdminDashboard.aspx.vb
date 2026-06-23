@@ -109,6 +109,8 @@ Public Class AdminDashboard
             Return "<span class=""badge badge-approved iocl-badge"">APPROVED</span>"
         ElseIf r.Status = RequestStatus.Cancelled Then
             Return "<span class=""badge bg-secondary text-white iocl-badge"">CANCELLED</span>"
+        ElseIf r.Status = RequestStatus.Returned Then
+            Return "<span class=""badge iocl-badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
         Else
             Dim reviewer As String = GetUserDisplayNameByEmpId(r.ReviewedByEmployeeId)
             Dim titleText As String = If(Not String.IsNullOrEmpty(r.RejectionReason), " title=""" & System.Web.HttpUtility.HtmlAttributeEncode(r.RejectionReason) & """", "")

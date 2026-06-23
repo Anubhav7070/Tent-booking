@@ -126,6 +126,7 @@
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a href="Users.aspx" class="dropdown-item"><i class="bi bi-people me-2"></i>User Accounts</a></li>
+                                <li><a href="SystemReset.aspx" class="dropdown-item"><i class="bi bi-trash-fill me-2 text-danger"></i>System Database Reset</a></li>
                             </ul>
                         </li>
                         <% End If %>

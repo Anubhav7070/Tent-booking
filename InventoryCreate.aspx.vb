@@ -15,7 +15,7 @@ Public Class InventoryCreate
         Dim qty As Integer = 0 : Integer.TryParse(txtQty.Text, qty)
         Dim price As Decimal = 0 : Decimal.TryParse(txtPrice.Text, price)
         InventoryService.CreateItem(txtName.Text.Trim(), txtDesc.Text.Trim(), Integer.Parse(ddlCategory.SelectedValue), ddlUnit.SelectedValue, qty, price, chkActive.Checked)
-        AuditService.Log(AuthHelper.GetCurrentUserId(Context),"Create","InventoryItem","0",String.Format("New item '{0}' created", txtName.Text),"","",String.Format("Price: Rs.{0}", price),Request.UserHostAddress)
+        AuditService.Log(AuthHelper.GetCurrentUserId(Context), "Create", "InventoryItem", "0", String.Format("New item '{0}' created", txtName.Text), "", String.Format("Price: Rs.{0}", price), Request.UserHostAddress)
         Session("Success") = String.Format("Item '{0}' added successfully.", txtName.Text)
         Response.Redirect("Inventory.aspx")
     End Sub

@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Web.UI
 Public Class MyRequests
     Inherits Page
@@ -16,6 +16,7 @@ Public Class MyRequests
             Case RequestStatus.Approved : Return "<span class=""badge bg-success"">Approved</span>"
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
+            Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
             Case Else : Return "<span class=""badge bg-warning text-dark"">Pending</span>"
         End Select
     End Function
@@ -29,4 +30,26 @@ Public Class MyRequests
             Case Else : Return "<span class=""badge bg-secondary"">—</span>"
         End Select
     End Function
+
+    Protected Sub rptRequests_ItemCommand(source As Object, e As RepeaterCommandEventArgs) Handles rptRequests.ItemCommand
+        If e.CommandName = "CancelRequest" Then
+            Try
+                Dim reqId As Integer = Convert.ToInt32(e.CommandArgument)
+                Dim username As String = AuthHelper.GetCurrentFullName(Context)
+                
+                Dim success As Boolean = RentalService.CancelRequest(reqId, username)
+                If success Then
+                    Dim userId As String = AuthHelper.GetCurrentUserId(Context)
+                    AuditService.Log(userId, "Cancel", "RentalRequest", reqId.ToString(), "Rental request cancelled", "", "", Request.UserHostAddress)
+                    NotificationService.CreateNotification(userId, "Request Cancelled", "Your rental request has been cancelled.")
+                    Session("Success") = "Request cancelled successfully."
+                Else
+                    Session("Error") = "Failed to cancel request."
+                End If
+            Catch ex As Exception
+                Session("Error") = "Error canceling request: " & ex.Message
+            End Try
+            Response.Redirect("MyRequests.aspx")
+        End If
+    End Sub
 End Class

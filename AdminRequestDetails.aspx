@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Request Details" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="AdminRequestDetails.aspx.vb" Inherits="AdminRequestDetails" %>
+<%@ Page Title="Request Details" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="AdminRequestDetails.aspx.vb" Inherits="AdminRequestDetails" %>
 <asp:Content ID="c2" ContentPlaceHolderID="MainContent" runat="server">
 <div class="iocl-page-header d-flex justify-content-between align-items-center mb-4">
     <div><h1 class="iocl-page-title"><i class="bi bi-file-earmark-check me-2"></i>Request Details</h1></div>
@@ -29,6 +29,12 @@
                 <div class="col-md-3"><div class="text-muted small fw-semibold">End Date</div><div><asp:Label ID="lblEndDate" runat="server"/></div></div>
                 <div class="col-md-3"><div class="text-muted small fw-semibold">Grand Total</div><div class="fw-bold fs-5 text-success">₹<asp:Label ID="lblGrandTotal" runat="server"/></div></div>
             </div>
+            <asp:Panel ID="pnlDocument" runat="server" CssClass="mt-3 pt-3 border-top" Visible="false">
+                <div class="text-muted small fw-semibold mb-1"><i class="bi bi-file-earmark-pdf me-1 text-primary"></i>In-Principal Approval Document</div>
+                <asp:HyperLink ID="hlDocument" runat="server" Target="_blank" CssClass="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i>View Uploaded Document
+                </asp:HyperLink>
+            </asp:Panel>
         </div>
     </div>
 

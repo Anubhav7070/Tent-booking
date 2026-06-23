@@ -27,7 +27,7 @@ Public Class InventoryEdit
         Dim userId As String = AuthHelper.GetCurrentUserId(Context)
         Dim userName As String = AuthHelper.GetCurrentFullName(Context)
         InventoryService.UpdateItem(id, txtName.Text.Trim(), txtDesc.Text.Trim(), Integer.Parse(ddlCategory.SelectedValue), ddlUnit.SelectedValue, qty, price, chkActive.Checked, userName)
-        AuditService.Log(userId,"Update","InventoryItem",id.ToString(),String.Format("Item '{0}' updated", txtName.Text),"","",String.Format("Price: Rs.{0}", price),Request.UserHostAddress)
+        AuditService.Log(userId, "Update", "InventoryItem", id.ToString(), String.Format("Item '{0}' updated", txtName.Text), "", String.Format("Price: Rs.{0}", price), Request.UserHostAddress)
         Session("Success") = String.Format("Item '{0}' updated successfully.", txtName.Text)
         Response.Redirect("Inventory.aspx")
     End Sub

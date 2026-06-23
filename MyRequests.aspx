@@ -1,4 +1,4 @@
-﻿<%@ Page Title="My Requests" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="MyRequests.aspx.vb" Inherits="MyRequests" %>
+<%@ Page Title="My Requests" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="MyRequests.aspx.vb" Inherits="MyRequests" %>
 <asp:Content ID="c2" ContentPlaceHolderID="MainContent" runat="server">
 <div class="iocl-page-header d-flex justify-content-between align-items-center mb-4">
     <h1 class="iocl-page-title"><i class="bi bi-card-list me-2"></i>My Requests</h1>
@@ -21,7 +21,17 @@
                             <td><small class="text-muted"><%# DirectCast(Eval("CreatedAt"),DateTime).ToString("dd MMM yy") %></small></td>
                             <td>
                                 <a href='AdminRequestDetails.aspx?id=<%# Eval("Id") %>' class="btn btn-sm btn-outline-primary me-1">Details</a>
-                                <%# If(CInt(Eval("Status"))=0, "<asp:LinkButton", "") %>
+                                <asp:HyperLink ID="hlDoc" runat="server" NavigateUrl='<%# Eval("InPrincipalDocumentPath") %>' Target="_blank" CssClass="btn btn-sm btn-outline-info me-1" Visible='<%# Not String.IsNullOrEmpty(Eval("InPrincipalDocumentPath").ToString()) %>' ToolTip="View Document">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </asp:HyperLink>
+                                <asp:LinkButton ID="lnkCancel" runat="server" 
+                                    CommandName="CancelRequest" 
+                                    CommandArgument='<%# Eval("Id") %>' 
+                                    CssClass="btn btn-sm btn-outline-danger" 
+                                    OnClientClick="return confirm('Are you sure you want to cancel this request? This will release any allocated stock.');"
+                                    Visible='<%# CInt(Eval("Status")) = 0 OrElse CInt(Eval("Status")) = 1 %>'>
+                                    <i class="bi bi-x-circle me-1"></i>Cancel
+                                </asp:LinkButton>
                             </td>
                         </tr>
                     </ItemTemplate>
