@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{F184B08F-C81C-45F6-A57F-5ABD9991F28F}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>IOCLCommunityHall</RootNamespace>
+    <AssemblyName>IOCLCommunityHall</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\</OutputPath>
+    <DocumentationFile>IOCLCommunityHall.xml</DocumentationFile>
+    <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DocumentationFile>IOCLCommunityHall.xml</DocumentationFile>
+    <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.SQLite">
+      <HintPath>bin\System.Data.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="web.config" />
+    <Content Include="Global.asax" />
+    <Content Include="Site.Master" />
+    <Content Include="Login.aspx" />
+    <Content Include="ChangePassword.aspx" />
+    <Content Include="AdminDashboard.aspx" />
+    <Content Include="AdminRequests.aspx" />
+    <Content Include="AdminRequestDetails.aspx" />
+    <Content Include="Inventory.aspx" />
+    <Content Include="InventoryCreate.aspx" />
+    <Content Include="InventoryEdit.aspx" />
+    <Content Include="PriceManagement.aspx" />
+    <Content Include="PriceHistory.aspx" />
+    <Content Include="AuditLog.aspx" />
+    <Content Include="Users.aspx" />
+    <Content Include="CreateUser.aspx" />
+    <Content Include="EditUser.aspx" />
+    <Content Include="UserDashboard.aspx" />
+    <Content Include="CreateRequest.aspx" />
+    <Content Include="MyRequests.aspx" />
+    <Content Include="Notifications.aspx" />
+    <Content Include="Reports.aspx" />
+    <Content Include="AccessDenied.aspx" />
+    <Content Include="Error.aspx" />
+    <Content Include="Content\iocl.css" />
+    <Content Include="Scripts\iocl.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App_Code\Database.vb" />
+    <Compile Include="App_Code\PasswordHelper.vb" />
+    <Compile Include="App_Code\Models.vb" />
+    <Compile Include="App_Code\AuthHelper.vb" />
+    <Compile Include="App_Code\Services.vb" />
+    <Compile Include="Global.asax.vb">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="Site.Master.vb">
+      <DependentUpon>Site.Master</DependentUpon>
+    </Compile>
+    <Compile Include="Login.aspx.vb">
+      <DependentUpon>Login.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ChangePassword.aspx.vb">
+      <DependentUpon>ChangePassword.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AdminDashboard.aspx.vb">
+      <DependentUpon>AdminDashboard.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AdminRequests.aspx.vb">
+      <DependentUpon>AdminRequests.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AdminRequestDetails.aspx.vb">
+      <DependentUpon>AdminRequestDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Inventory.aspx.vb">
+      <DependentUpon>Inventory.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="InventoryCreate.aspx.vb">
+      <DependentUpon>InventoryCreate.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="InventoryEdit.aspx.vb">
+      <DependentUpon>InventoryEdit.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PriceManagement.aspx.vb">
+      <DependentUpon>PriceManagement.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PriceHistory.aspx.vb">
+      <DependentUpon>PriceHistory.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AuditLog.aspx.vb">
+      <DependentUpon>AuditLog.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Users.aspx.vb">
+      <DependentUpon>Users.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CreateUser.aspx.vb">
+      <DependentUpon>CreateUser.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="EditUser.aspx.vb">
+      <DependentUpon>EditUser.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UserDashboard.aspx.vb">
+      <DependentUpon>UserDashboard.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CreateRequest.aspx.vb">
+      <DependentUpon>CreateRequest.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="MyRequests.aspx.vb">
+      <DependentUpon>MyRequests.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Notifications.aspx.vb">
+      <DependentUpon>Notifications.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Reports.aspx.vb">
+      <DependentUpon>Reports.aspx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.VisualBasic.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+</Project>

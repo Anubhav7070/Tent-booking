@@ -1,0 +1,25 @@
+# Build folders
+bin/
+obj/
+packages/
+
+# IDE/Editor folders
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Log files
+*.log
+err.log
+out.log
+server_debug.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Uploads
+uploads/

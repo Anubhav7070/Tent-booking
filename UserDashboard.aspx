@@ -1,0 +1,133 @@
+<%@ Page Title="Employee Dashboard" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="UserDashboard.aspx.vb" Inherits="UserDashboard" %>
+<asp:Content ID="c2" ContentPlaceHolderID="MainContent" runat="server">
+    <!-- Welcome Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="position-relative overflow-hidden text-white p-0"
+                 style="background: linear-gradient(135deg, #1a3fa8 0%, #0052cc 50%, #0369a1 100%);
+                        border-radius: 18px; box-shadow: 0 8px 32px rgba(0,82,165,0.22);">
+                <!-- Decorative circles -->
+                <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+                            border-radius:50%;background:rgba(255,255,255,0.06);pointer-events:none;"></div>
+                <div style="position:absolute;bottom:-60px;right:120px;width:150px;height:150px;
+                            border-radius:50%;background:rgba(255,255,255,0.04);pointer-events:none;"></div>
+                <div style="position:absolute;top:10px;left:55%;width:80px;height:80px;
+                            border-radius:50%;background:rgba(255,255,255,0.05);pointer-events:none;"></div>
+
+                <div class="row align-items-center px-4 py-4 position-relative">
+                    <!-- Left: Text -->
+                    <div class="col-md-7 col-lg-8 mb-3 mb-md-0">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:1.3rem;">
+                                🏛️
+                            </span>
+                            <span class="text-white-50 fw-semibold" style="font-size:0.8rem;letter-spacing:1.5px;text-transform:uppercase;">
+                                IOCL Panipat Township
+                            </span>
+                        </div>
+                        <h2 class="fw-bold mb-1" style="font-size:1.55rem;line-height:1.3;letter-spacing:-0.3px;">
+                            Welcome, <asp:Label ID="lblWelcome" runat="server"/>!
+                        </h2>
+                        <p class="mb-0" style="opacity:0.8;font-size:0.92rem;max-width:480px;line-height:1.6;">
+                            Book the Main Community Hall or Dining Hall for your event, or request furniture, AV equipment and other rental items — all in one place.
+                        </p>
+                    </div>
+
+                    <!-- Right: CTA Buttons -->
+                    <div class="col-md-5 col-lg-4">
+                        <div class="d-flex flex-column flex-sm-row flex-md-column gap-2 align-items-stretch align-items-md-end">
+                            <a href="CreateRequest.aspx"
+                               class="btn fw-bold py-2 px-4 text-white"
+                               style="background:rgba(255,255,255,0.12);border-radius:10px;
+                                      border:1.5px solid rgba(255,255,255,0.35);transition:all 0.2s;
+                                      font-size:0.9rem;backdrop-filter:blur(4px);"
+                               onmouseover="this.style.background='rgba(255,255,255,0.22)';this.style.transform='translateY(-1px)'"
+                               onmouseout="this.style.background='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
+                                <i class="bi bi-cart-plus-fill me-2"></i>Request Rental Items
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="row g-4">
+        <!-- Recent Activity / Rental Requests -->
+        <div class="col-lg-8">
+            <div class="card iocl-card shadow-sm h-100">
+                <div class="card-header iocl-card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-journal-text me-2 text-primary"></i>My Recent Requests</span>
+                    <a href="MyRequests.aspx" class="btn btn-sm btn-link text-decoration-none">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 iocl-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Request No.</th>
+                                    <th>Event Date</th>
+                                    <th>Total Cost</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <asp:Repeater ID="rptRequests" runat="server">
+                                    <ItemTemplate>
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-primary">#<%# Eval("RequestNumber") %></td>
+                                            <td><%# DirectCast(Eval("EventDate"), DateTime).ToString("dd MMM yyyy") %></td>
+                                            <td class="fw-bold">₹<%# String.Format("{0:N2}", Eval("GrandTotal")) %></td>
+                                            <td><%# GetStatusBadge(Container.DataItem) %></td>
+                                            <td class="text-end pe-4">
+                                                <a href='AdminRequestDetails.aspx?id=<%# Eval("Id") %>' class="btn btn-sm btn-light border"><i class="bi bi-eye"></i> Details</a>
+                                            </td>
+                                        </tr>
+                                    </ItemTemplate>
+                                </asp:Repeater>
+                                <asp:PlaceHolder ID="phNoReqs" runat="server" Visible="false">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">You have not submitted any requests yet.</td>
+                                    </tr>
+                                </asp:PlaceHolder>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Inventory Status -->
+        <div class="col-lg-4">
+            <div class="card iocl-card h-100 shadow-sm">
+                <div class="card-header iocl-card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-box-seam-fill me-2 text-primary"></i>Live Inventory Stock</span>
+                    <span class="badge bg-primary rounded-pill"><asp:Label ID="lblInvCount" runat="server">0</asp:Label> Items</span>
+                </div>
+                <div class="card-body p-0" style="max-height: 520px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush">
+                        <asp:Repeater ID="rptAvailableInventory" runat="server">
+                            <ItemTemplate>
+                                <li class="list-group-item px-4 py-3 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0"><%# Eval("Name") %></h6>
+                                        <span class="text-muted small"><%# Eval("CategoryName") %> · Rent: ₹<%# String.Format("{0:N2}", Eval("CurrentPrice")) %> / <%# Eval("UnitType") %></span>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-light text-dark border fs-6 fw-bold"><%# Eval("AvailableQuantity") %></span>
+                                        <div class="small text-muted" style="font-size: 0.7rem;">Available</div>
+                                    </div>
+                                </li>
+                            </ItemTemplate>
+                        </asp:Repeater>
+                        <asp:PlaceHolder ID="phNoInventory" runat="server" Visible="false">
+                            <li class="list-group-item text-center text-muted py-4">No inventory items available.</li>
+                        </asp:PlaceHolder>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</asp:Content>
