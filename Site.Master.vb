@@ -1,6 +1,7 @@
 Imports System
 Imports System.Web.UI
 Imports System.Collections.Generic
+Imports System.Data.SQLite
 
 Public Class SiteMaster
     Inherits MasterPage
@@ -8,6 +9,29 @@ Public Class SiteMaster
     Protected Sub Page_Load(ByVal sender As Object, ByVal e As EventArgs) Handles Me.Load
         If AuthHelper.IsAuthenticated(Context) Then
             Dim userId As String = AuthHelper.GetCurrentUserId(Context)
+
+            ' Force password change redirect if flag is set
+            Dim mustChange As Boolean = False
+            Dim resultObj As Object = Database.ExecuteScalar("SELECT MustChangePassword FROM AspNetUsers WHERE Id=@id", New SQLiteParameter("@id", userId))
+            If resultObj IsNot Nothing AndAlso Not IsDBNull(resultObj) Then
+                mustChange = Convert.ToBoolean(resultObj)
+            End If
+
+            If mustChange Then
+                Dim currentPage As String = System.IO.Path.GetFileName(Request.PhysicalPath)
+                If Not String.Equals(currentPage, "ChangePassword.aspx", StringComparison.OrdinalIgnoreCase) Then
+                    Response.Redirect("~/ChangePassword.aspx?force=1")
+                    Return
+                End If
+            End If
+
+            ' Trigger auto-release check on page load to ensure stock availability updates dynamically
+            Try
+                RentalService.ReleaseExpiredAllocations()
+            Catch ex As Exception
+                ' Silent catch: do not block page load due to release errors
+            End Try
+
             lblUserName.Text = AuthHelper.GetCurrentFullName(Context)
             Dim role As String = AuthHelper.GetCurrentRole(Context)
             lblUserRole.Text = GetRoleLabel(role)
