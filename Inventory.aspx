@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Inventory" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="Inventory.aspx.vb" Inherits="Inventory" %>
+<%@ Page Title="Inventory" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="Inventory.aspx.vb" Inherits="Inventory" %>
 <asp:Content ID="c2" ContentPlaceHolderID="MainContent" runat="server">
 <div class="iocl-page-header d-flex justify-content-between align-items-center mb-4">
     <h1 class="iocl-page-title"><i class="bi bi-boxes me-2"></i>Inventory Items</h1>
@@ -30,8 +30,8 @@
                         <p class="text-muted small mb-2"><%# Eval("Description") %></p>
                         <div class="row g-2 text-center">
                             <div class="col-4"><div class="bg-light rounded p-2"><div class="fw-bold"><%# Eval("TotalQuantity") %></div><div class="text-muted" style="font-size:0.7rem;">Total</div></div></div>
-                            <div class="col-4"><div class="bg-warning bg-opacity-10 rounded p-2"><div class="fw-bold text-warning"><%# Eval("ReservedQuantity") %></div><div class="text-muted" style="font-size:0.7rem;">Reserved</div></div></div>
-                            <div class="col-4"><div class="bg-success bg-opacity-10 rounded p-2"><div class="fw-bold text-success"><%# Eval("AvailableQuantity") %></div><div class="text-muted" style="font-size:0.7rem;">Available</div></div></div>
+                            <div class="col-4"><div class="bg-warning bg-opacity-10 rounded p-2"><div class="fw-bold text-warning"><%# GetReservedQty(Container.DataItem) %></div><div class="text-muted" style="font-size:0.7rem;">Reserved</div></div></div>
+                            <div class="col-4"><div class="bg-success bg-opacity-10 rounded p-2"><div class="fw-bold text-success"><%# GetAvailableQty(Container.DataItem) %></div><div class="text-muted" style="font-size:0.7rem;">Available</div></div></div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <span class="fw-bold text-success fs-6">₹<%# String.Format("{0:N2}", Eval("CurrentPrice")) %>/<%# Eval("UnitType") %></span>

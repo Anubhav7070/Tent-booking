@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Rental Requests" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="AdminRequests.aspx.vb" Inherits="AdminRequests" %>
+<%@ Page Title="Rental Requests" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="AdminRequests.aspx.vb" Inherits="AdminRequests" %>
 <asp:Content ID="Content2" ContentPlaceHolderID="MainContent" runat="server">
 <div class="iocl-page-header mb-4">
     <h1 class="iocl-page-title"><i class="bi bi-file-earmark-text me-2"></i>Rental Requests</h1>
@@ -43,7 +43,7 @@
                                 <td class="fw-semibold">₹<%# String.Format("{0:N2}", Eval("GrandTotal")) %></td>
                                 <td><span class="badge bg-light text-dark border"><%# Eval("SubmittedByRole") %></span></td>
                                 <td><%# GetStageBadge(CInt(Eval("ApprovalStage"))) %></td>
-                                <td><%# GetStatusBadge(CInt(Eval("Status"))) %></td>
+                                <td><%# GetStatusBadge(Container.DataItem) %></td>
                                 <td><small class="text-muted"><%# DirectCast(Eval("CreatedAt"),DateTime).ToString("dd MMM yy") %></small></td>
                                 <td><a href='AdminRequestDetails.aspx?id=<%# Eval("Id") %>' class="btn btn-sm btn-outline-primary">Details</a></td>
                             </tr>

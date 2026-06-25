@@ -110,6 +110,8 @@ Public Class RentalRequest
     Public Property ReviewedAt As DateTime?
     Public Property ReviewedByEmployeeId As String = String.Empty
     Public Property RejectionReason As String = String.Empty
+    Public Property InventoryReleased As Boolean = False
+    Public Property InventoryReleasedAt As DateTime?
     Public Property Items As List(Of RentalRequestItem) = New List(Of RentalRequestItem)()
 End Class
 
@@ -152,6 +154,8 @@ Public Class InventoryAllocation
     Public Property RequestId As Integer
     Public Property InventoryItemId As Integer
     Public Property AllocatedQuantity As Integer
+    Public Property StartDate As DateTime
+    Public Property EndDate As DateTime
     Public Property Status As String = "Reserved"
     Public Property AllocatedAt As DateTime = DateTime.UtcNow
 End Class

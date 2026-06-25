@@ -52,9 +52,17 @@ Public Class AdminRequests
         LoadRequests()
     End Sub
 
-    Protected Function GetStatusBadge(status As Integer) As String
-        Select Case CType(status, RequestStatus)
-            Case RequestStatus.Approved : Return "<span class=""badge bg-success"">Approved</span>"
+    Protected Function GetStatusBadge(dataItem As Object) As String
+        Dim r As RentalRequest = TryCast(dataItem, RentalRequest)
+        If r Is Nothing Then Return ""
+        If r.Status = RequestStatus.Approved Then
+            If r.InventoryReleased Then
+                Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
+            Else
+                Return "<span class=""badge bg-success"">Approved</span>"
+            End If
+        End If
+        Select Case r.Status
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
             Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"

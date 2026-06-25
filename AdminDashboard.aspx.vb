@@ -106,7 +106,11 @@ Public Class AdminDashboard
             End If
             Return "<span class=""badge badge-pending iocl-badge"">" & stageStr & "</span>"
         ElseIf r.Status = RequestStatus.Approved Then
-            Return "<span class=""badge badge-approved iocl-badge"">APPROVED</span>"
+            If r.InventoryReleased Then
+                Return "<span class=""badge iocl-badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
+            Else
+                Return "<span class=""badge badge-approved iocl-badge"">APPROVED</span>"
+            End If
         ElseIf r.Status = RequestStatus.Cancelled Then
             Return "<span class=""badge bg-secondary text-white iocl-badge"">CANCELLED</span>"
         ElseIf r.Status = RequestStatus.Returned Then

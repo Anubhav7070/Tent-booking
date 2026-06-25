@@ -116,7 +116,7 @@
                                         <span class="text-muted small"><%# Eval("CategoryName") %> · Rent: ₹<%# String.Format("{0:N2}", Eval("CurrentPrice")) %> / <%# Eval("UnitType") %></span>
                                     </div>
                                     <div class="text-end">
-                                        <span class="badge bg-light text-dark border fs-6 fw-bold"><%# Eval("AvailableQuantity") %></span>
+                                        <span class="badge bg-light text-dark border fs-6 fw-bold"><%# GetAvailableQty(Container.DataItem) %></span>
                                         <div class="small text-muted" style="font-size: 0.7rem;">Available</div>
                                     </div>
                                 </li>

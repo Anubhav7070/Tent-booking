@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Reports" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="Reports.aspx.vb" Inherits="Reports" %>
+<%@ Page Title="Reports" Language="VB" MasterPageFile="~/Site.Master" AutoEventWireup="false" CodeFile="Reports.aspx.vb" Inherits="Reports" %>
 <asp:Content ID="c2" ContentPlaceHolderID="MainContent" runat="server">
 <div class="iocl-page-header mb-4"><h1 class="iocl-page-title"><i class="bi bi-graph-up-arrow me-2"></i>Reports</h1></div>
 <!-- Report Filters -->
@@ -61,7 +61,7 @@
                                 <td><small class="text-muted"><%# Eval("UserDepartment") %></small></td>
                                 <td><%# DirectCast(Eval("EventDate"),DateTime).ToString("dd MMM yyyy") %></td>
                                 <td>₹<%# String.Format("{0:N2}", Eval("GrandTotal")) %></td>
-                                <td><%# GetStatusBadge(CInt(Eval("Status"))) %></td>
+                                <td><%# GetStatusBadge(Container.DataItem) %></td>
                             </tr>
                         </ItemTemplate>
                     </asp:Repeater>

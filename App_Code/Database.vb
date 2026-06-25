@@ -91,13 +91,33 @@ Public Class Database
                     ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS PriceHistories (Id INTEGER PRIMARY KEY AUTOINCREMENT, InventoryItemId INTEGER NOT NULL, PreviousPrice DECIMAL(10,2), UpdatedPrice DECIMAL(10,2) NOT NULL, EffectiveDate TEXT, Reason TEXT, UpdatedBy TEXT, UpdatedAt TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(InventoryItemId) REFERENCES InventoryItems(Id));")
 
                     ' RentalRequests
-                    ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS RentalRequests (Id INTEGER PRIMARY KEY AUTOINCREMENT, RequestNumber TEXT UNIQUE, UserId TEXT NOT NULL, SubmittedByRole TEXT DEFAULT 'User', EventDate TEXT NOT NULL, StartDate TEXT NOT NULL, EndDate TEXT NOT NULL, InPrincipalDocumentPath TEXT, GrandTotal DECIMAL(12,2) DEFAULT 0, Status INTEGER DEFAULT 0, ApprovalStage INTEGER DEFAULT 0, HODApprovedAt TEXT, HODApprovedByEmployeeId TEXT, GMApprovedAt TEXT, GMApprovedByEmployeeId TEXT, HRApprovedAt TEXT, HRApprovedByEmployeeId TEXT, CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP, ReviewedAt TEXT, ReviewedByEmployeeId TEXT, RejectionReason TEXT, FOREIGN KEY(UserId) REFERENCES AspNetUsers(Id));")
+                    ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS RentalRequests (Id INTEGER PRIMARY KEY AUTOINCREMENT, RequestNumber TEXT UNIQUE, UserId TEXT NOT NULL, SubmittedByRole TEXT DEFAULT 'User', EventDate TEXT NOT NULL, StartDate TEXT NOT NULL, EndDate TEXT NOT NULL, InPrincipalDocumentPath TEXT, GrandTotal DECIMAL(12,2) DEFAULT 0, Status INTEGER DEFAULT 0, ApprovalStage INTEGER DEFAULT 0, HODApprovedAt TEXT, HODApprovedByEmployeeId TEXT, GMApprovedAt TEXT, GMApprovedByEmployeeId TEXT, HRApprovedAt TEXT, HRApprovedByEmployeeId TEXT, CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP, ReviewedAt TEXT, ReviewedByEmployeeId TEXT, RejectionReason TEXT, InventoryReleased INTEGER DEFAULT 0, InventoryReleasedAt TEXT, FOREIGN KEY(UserId) REFERENCES AspNetUsers(Id));")
 
                     ' RentalRequestItems
                     ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS RentalRequestItems (Id INTEGER PRIMARY KEY AUTOINCREMENT, RentalRequestId INTEGER NOT NULL, InventoryItemId INTEGER NOT NULL, RequestedQuantity INTEGER DEFAULT 1, UnitPriceAtRequest DECIMAL(10,2) DEFAULT 0, FOREIGN KEY(RentalRequestId) REFERENCES RentalRequests(Id) ON DELETE CASCADE, FOREIGN KEY(InventoryItemId) REFERENCES InventoryItems(Id));")
 
                     ' InventoryAllocations
-                    ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS InventoryAllocations (AllocationId INTEGER PRIMARY KEY AUTOINCREMENT, RequestId INTEGER NOT NULL, InventoryItemId INTEGER NOT NULL, AllocatedQuantity INTEGER DEFAULT 0, Status TEXT DEFAULT 'Reserved', AllocatedAt TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(RequestId) REFERENCES RentalRequests(Id) ON DELETE CASCADE, FOREIGN KEY(InventoryItemId) REFERENCES InventoryItems(Id));")
+                    ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS InventoryAllocations (AllocationId INTEGER PRIMARY KEY AUTOINCREMENT, RequestId INTEGER NOT NULL, InventoryItemId INTEGER NOT NULL, AllocatedQuantity INTEGER DEFAULT 0, StartDate TEXT, EndDate TEXT, Status TEXT DEFAULT 'Reserved', AllocatedAt TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(RequestId) REFERENCES RentalRequests(Id) ON DELETE CASCADE, FOREIGN KEY(InventoryItemId) REFERENCES InventoryItems(Id));")
+
+                    ' Check and alter RentalRequests for release columns if they don't exist
+                    Try
+                        ExecuteSql(conn, "ALTER TABLE RentalRequests ADD COLUMN InventoryReleased INTEGER DEFAULT 0;")
+                    Catch
+                    End Try
+                    Try
+                        ExecuteSql(conn, "ALTER TABLE RentalRequests ADD COLUMN InventoryReleasedAt TEXT;")
+                    Catch
+                    End Try
+
+                    ' Check and alter InventoryAllocations for dates if they don't exist
+                    Try
+                        ExecuteSql(conn, "ALTER TABLE InventoryAllocations ADD COLUMN StartDate TEXT;")
+                    Catch
+                    End Try
+                    Try
+                        ExecuteSql(conn, "ALTER TABLE InventoryAllocations ADD COLUMN EndDate TEXT;")
+                    Catch
+                    End Try
 
                     ' Notifications
                     ExecuteSql(conn, "CREATE TABLE IF NOT EXISTS Notifications (Id INTEGER PRIMARY KEY AUTOINCREMENT, UserId TEXT NOT NULL, Title TEXT NOT NULL, Message TEXT, IsRead INTEGER DEFAULT 0, CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(UserId) REFERENCES AspNetUsers(Id) ON DELETE CASCADE);")

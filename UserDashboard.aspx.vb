@@ -8,11 +8,16 @@ Imports System.Web.UI
 Public Class UserDashboard
     Inherits Page
 
+    Public TodayReserved As New Dictionary(Of Integer, Integer)()
+
     Protected Sub Page_Load(ByVal sender As Object, ByVal e As EventArgs) Handles Me.Load
         AuthHelper.RequireLogin(Me)
         If Not IsPostBack Then
             Dim userId As String = AuthHelper.GetCurrentUserId(Context)
             lblWelcome.Text = AuthHelper.GetCurrentFullName(Context)
+
+            ' Fetch today's reserved stock mapping
+            TodayReserved = InventoryService.GetTodayReserved()
 
             ' Load user requests
             Dim reqs = RentalService.GetUserRequests(userId)
@@ -28,6 +33,16 @@ Public Class UserDashboard
             phNoInventory.Visible = (availInventory.Count = 0)
         End If
     End Sub
+
+    Protected Function GetAvailableQty(dataItem As Object) As Integer
+        Dim item As InventoryItem = TryCast(dataItem, InventoryItem)
+        If item Is Nothing Then Return 0
+        Dim reserved As Integer = 0
+        If TodayReserved.ContainsKey(item.Id) Then
+            reserved = TodayReserved(item.Id)
+        End If
+        Return Math.Max(0, item.TotalQuantity - reserved)
+    End Function
 
     Protected Function GetStatusBadge(dataItem As Object) As String
         Dim r As RentalRequest = TryCast(dataItem, RentalRequest)
@@ -46,7 +61,11 @@ Public Class UserDashboard
             End If
             Return "<span class=""badge badge-pending iocl-badge"">" & stageStr & "</span>"
         ElseIf r.Status = RequestStatus.Approved Then
-            Return "<span class=""badge badge-approved iocl-badge"">Approved</span>"
+            If r.InventoryReleased Then
+                Return "<span class=""badge iocl-badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
+            Else
+                Return "<span class=""badge badge-approved iocl-badge"">Approved</span>"
+            End If
         ElseIf r.Status = RequestStatus.Cancelled Then
             Return "<span class=""badge bg-secondary text-white iocl-badge"">Cancelled</span>"
         Else

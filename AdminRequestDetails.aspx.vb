@@ -23,7 +23,7 @@ Public Class AdminRequestDetails
 
         lblRequestNumber.Text = req.RequestNumber
         lblStageBadge.Text = GetStageBadge(CInt(req.ApprovalStage))
-        lblStatusBadge.Text = GetStatusBadge(CInt(req.Status))
+        lblStatusBadge.Text = GetStatusBadge(req)
         lblCreatedAt.Text = req.CreatedAt.ToString("dd MMM yyyy, HH:mm")
         lblEmployee.Text = req.UserFullName
         lblEmpId.Text = req.UserEmployeeId
@@ -94,9 +94,15 @@ Public Class AdminRequestDetails
         Response.Redirect(Request.RawUrl)
     End Sub
 
-    Protected Function GetStatusBadge(status As Integer) As String
-        Select Case CType(status, RequestStatus)
-            Case RequestStatus.Approved : Return "<span class=""badge bg-success"">Approved</span>"
+    Protected Function GetStatusBadge(req As RentalRequest) As String
+        If req.Status = RequestStatus.Approved Then
+            If req.InventoryReleased Then
+                Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
+            Else
+                Return "<span class=""badge bg-success"">Approved</span>"
+            End If
+        End If
+        Select Case req.Status
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
             Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"

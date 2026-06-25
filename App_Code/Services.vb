@@ -336,6 +336,19 @@ Public Class InventoryService
             .IsActive = Convert.ToBoolean(row("IsActive"))
         }
     End Function
+
+    Public Shared Function GetTodayReserved() As Dictionary(Of Integer, Integer)
+        Dim todayStr As String = DateTime.UtcNow.ToString("yyyy-MM-dd")
+        Dim dt As DataTable = Database.ExecuteDataTable(
+            "SELECT InventoryItemId, SUM(AllocatedQuantity) AS Reserved FROM InventoryAllocations WHERE (Status = 'Approved' OR Status = 'Reserved') AND StartDate <= @today AND EndDate > @today GROUP BY InventoryItemId",
+            New SQLiteParameter("@today", todayStr))
+        
+        Dim dict As New Dictionary(Of Integer, Integer)()
+        For Each row As DataRow In dt.Rows
+            dict(Convert.ToInt32(row("InventoryItemId"))) = Convert.ToInt32(row("Reserved"))
+        Next
+        Return dict
+    End Function
 End Class
 
 ' ── RentalService ─────────────────────────────────────────────────────────────
@@ -381,6 +394,9 @@ Public Class RentalService
     Public Shared Function CreateRequest(userId As String, submitterRole As String,
                                           eventDate As DateTime, startDate As DateTime, endDate As DateTime,
                                           itemIds() As Integer, quantities() As Integer, documentPath As String) As RentalRequest
+        ' Enforce backend validation: StartDate == EventDate
+        startDate = eventDate
+
         ' Validate date range
         If startDate.Date < DateTime.Today Then
             Throw New InvalidOperationException("Start date cannot be in the past.")
@@ -424,35 +440,35 @@ Public Class RentalService
 
         Dim reqNumber As String = "REQ-" & DateTime.Now.ToString("yyyyMMdd-HHmmss") & "-" & New Random().Next(100, 999).ToString()
 
-        ' Determine initial approval stage and status based on submitter role and grand total (matching MVC)
+        ' Determine initial approval stage and status based on submitter role and grand total
         Dim stage As ApprovalStage = ApprovalStage.PendingHOD
         Dim status As RequestStatus = RequestStatus.Pending
-        Dim isAutoApprove As Boolean = False
+        Dim isAutoApprove As Boolean = (submitterRole = "SuperAdmin")
 
         Select Case submitterRole
             Case "User"
                 stage = ApprovalStage.PendingHOD
             Case "HOD"
-                If grandTotal <= 10000 Then
-                    stage = ApprovalStage.PendingHR
-                Else
+                If grandTotal > 10000 Then
                     stage = ApprovalStage.PendingGM
+                Else
+                    stage = ApprovalStage.PendingHR
                 End If
             Case "GM"
+                stage = ApprovalStage.PendingHR
+            Case "SuperAdmin"
                 stage = ApprovalStage.Approved
                 status = RequestStatus.Approved
-                isAutoApprove = True
-            Case "SuperAdmin"
-                If grandTotal <= 10000 Then
-                    stage = ApprovalStage.Approved
-                    status = RequestStatus.Approved
-                    isAutoApprove = True
-                Else
-                    stage = ApprovalStage.PendingGM
-                End If
         End Select
 
-        Database.ExecuteNonQuery("INSERT INTO RentalRequests(RequestNumber,UserId,SubmittedByRole,EventDate,StartDate,EndDate,InPrincipalDocumentPath,GrandTotal,Status,ApprovalStage,CreatedAt) VALUES(@rn,@uid,@sr,@ed,@sd,@end,@doc,@gt,@st,@as,@ca)",
+        Dim nowStr As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+        Dim autoApproverEmpId As String = ""
+        If isAutoApprove Then
+            Dim usr = UserService.GetUserById(userId)
+            autoApproverEmpId = If(usr IsNot Nothing, usr.EmployeeId, "SYSTEM")
+        End If
+
+        Database.ExecuteNonQuery("INSERT INTO RentalRequests(RequestNumber,UserId,SubmittedByRole,EventDate,StartDate,EndDate,InPrincipalDocumentPath,GrandTotal,Status,ApprovalStage,HRApprovedAt,HRApprovedByEmployeeId,ReviewedAt,ReviewedByEmployeeId,CreatedAt) VALUES(@rn,@uid,@sr,@ed,@sd,@end,@doc,@gt,@st,@as,@hra,@hraid,@ra,@raid,@ca)",
             New SQLiteParameter("@rn", reqNumber),
             New SQLiteParameter("@uid", userId),
             New SQLiteParameter("@sr", submitterRole),
@@ -463,7 +479,11 @@ Public Class RentalService
             New SQLiteParameter("@gt", grandTotal),
             New SQLiteParameter("@st", CInt(status)),
             New SQLiteParameter("@as", CInt(stage)),
-            New SQLiteParameter("@ca", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")))
+            New SQLiteParameter("@hra", If(isAutoApprove, nowStr, DBNull.Value)),
+            New SQLiteParameter("@hraid", If(isAutoApprove, autoApproverEmpId, "")),
+            New SQLiteParameter("@ra", If(isAutoApprove, nowStr, DBNull.Value)),
+            New SQLiteParameter("@raid", If(isAutoApprove, autoApproverEmpId, "")),
+            New SQLiteParameter("@ca", nowStr))
 
         Dim newId As Object = Database.ExecuteScalar("SELECT last_insert_rowid()")
         Dim requestId As Integer = Convert.ToInt32(newId)
@@ -479,30 +499,33 @@ Public Class RentalService
                         New SQLiteParameter("@qty", quantities(i)),
                         New SQLiteParameter("@price", item.CurrentPrice))
 
-                    ' Reserve inventory
-                    Database.ExecuteNonQuery("UPDATE InventoryItems SET ReservedQuantity=ReservedQuantity+@qty, UpdatedAt=@now WHERE Id=@iid",
-                        New SQLiteParameter("@qty", quantities(i)),
-                        New SQLiteParameter("@now", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")),
-                        New SQLiteParameter("@iid", itemIds(i)))
+                    ' Only allocate and reserve stock immediately if request is auto-approved (SuperAdmin)
+                    If isAutoApprove Then
+                        Dim available = GetAvailableQuantityForDates(itemIds(i), startDate, endDate, requestId)
+                        Dim canAllocate = Math.Min(quantities(i), available)
+                        
+                        If canAllocate > 0 Then
+                            Database.ExecuteNonQuery("UPDATE InventoryItems SET ReservedQuantity=ReservedQuantity+@qty, UpdatedAt=@now WHERE Id=@iid",
+                                New SQLiteParameter("@qty", canAllocate),
+                                New SQLiteParameter("@now", nowStr),
+                                New SQLiteParameter("@iid", itemIds(i)))
 
-                    Dim allocationStatus As String = "Reserved"
-                    If status = RequestStatus.Approved Then
-                        allocationStatus = "Approved"
+                            Database.ExecuteNonQuery("INSERT INTO InventoryAllocations(RequestId,InventoryItemId,AllocatedQuantity,StartDate,EndDate,Status) VALUES(@rid,@iid,@qty,@sd,@ed,@status)",
+                                New SQLiteParameter("@rid", requestId),
+                                New SQLiteParameter("@iid", itemIds(i)),
+                                New SQLiteParameter("@qty", canAllocate),
+                                New SQLiteParameter("@sd", startDate.ToString("yyyy-MM-dd")),
+                                New SQLiteParameter("@ed", endDate.ToString("yyyy-MM-dd")),
+                                New SQLiteParameter("@status", "Approved"))
+
+                            Dim notes As String = "Auto-allocated for " & submitterRole & " request " & reqNumber
+                            Database.ExecuteNonQuery("INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Allocation', @qty, @notes, @now)",
+                                                     New SQLiteParameter("@itemId", itemIds(i)),
+                                                     New SQLiteParameter("@qty", canAllocate),
+                                                     New SQLiteParameter("@notes", notes),
+                                                     New SQLiteParameter("@now", nowStr))
+                        End If
                     End If
-
-                    Database.ExecuteNonQuery("INSERT INTO InventoryAllocations(RequestId,InventoryItemId,AllocatedQuantity,Status) VALUES(@rid,@iid,@qty,@status)",
-                        New SQLiteParameter("@rid", requestId),
-                        New SQLiteParameter("@iid", itemIds(i)),
-                        New SQLiteParameter("@qty", quantities(i)),
-                        New SQLiteParameter("@status", allocationStatus))
-
-                    ' Log transaction
-                    Dim performedBy As String = If(status = RequestStatus.Approved, "Auto-Approved (" & submitterRole & ")", "Reserved (" & submitterRole & ")")
-                    Database.ExecuteNonQuery("INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Allocation', @qty, @notes, @now)",
-                                             New SQLiteParameter("@itemId", itemIds(i)),
-                                             New SQLiteParameter("@qty", quantities(i)),
-                                             New SQLiteParameter("@notes", performedBy & " request " & reqNumber),
-                                             New SQLiteParameter("@now", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")))
                 End If
             End If
         Next
@@ -520,24 +543,27 @@ Public Class RentalService
         End If
 
         Dim maxReserved As Integer = 0
-        Dim sql As String = "SELECT a.AllocatedQuantity, r.StartDate, r.EndDate " &
-                            "FROM InventoryAllocations a " &
-                            "JOIN RentalRequests r ON a.RequestId = r.Id " &
-                            "WHERE a.InventoryItemId = @itemId " &
-                            "  AND a.RequestId <> @excludeId " &
-                            "  AND (a.Status = 'Approved' OR a.Status = 'Reserved')"
+        Dim sql As String = "SELECT AllocatedQuantity, StartDate, EndDate " &
+                            "FROM InventoryAllocations " &
+                            "WHERE InventoryItemId = @itemId " &
+                            "  AND RequestId <> @excludeId " &
+                            "  AND (Status = 'Approved' OR Status = 'Reserved')"
         Dim dtAlloc As DataTable = Database.ExecuteDataTable(sql, 
             New SQLiteParameter("@itemId", itemId),
             New SQLiteParameter("@excludeId", excludeRequestId))
 
         Dim currentDate As DateTime = startDate.Date
         Dim finalDate As DateTime = endDate.Date
-        While currentDate <= finalDate
+        
+        ' Half-open interval matching MVC logic (currentDate < finalDate)
+        While currentDate < finalDate
             Dim reservedOnDay As Integer = 0
             For Each row As DataRow In dtAlloc.Rows
                 Dim allocStart As DateTime = DateTime.Parse(row("StartDate").ToString())
                 Dim allocEnd As DateTime = DateTime.Parse(row("EndDate").ToString())
-                If allocStart <= currentDate AndAlso allocEnd >= currentDate Then
+                
+                ' StartDate.Date <= currentDate AndAlso EndDate.Date > currentDate
+                If allocStart.Date <= currentDate AndAlso allocEnd.Date > currentDate Then
                     reservedOnDay += Convert.ToInt32(row("AllocatedQuantity"))
                 End If
             Next
@@ -551,69 +577,79 @@ Public Class RentalService
     End Function
 
     Public Shared Function ReleaseExpiredAllocations() As Integer
-        Dim todayStr As String = DateTime.Today.ToString("yyyy-MM-dd")
-        Dim sqlExpired As String = "SELECT a.AllocationId, a.RequestId, a.InventoryItemId, a.AllocatedQuantity, r.RequestNumber, r.UserId, r.Status " &
-                                   "FROM InventoryAllocations a " &
-                                   "JOIN RentalRequests r ON a.RequestId = r.Id " &
-                                   "WHERE (a.Status = 'Approved' OR a.Status = 'Reserved') " &
-                                   "  AND r.EndDate < @today"
-        Dim dtExpired As DataTable = Database.ExecuteDataTable(sqlExpired, New SQLiteParameter("@today", todayStr))
-        
-        If dtExpired.Rows.Count = 0 Then Return 0
-        
+        Dim utcNow = DateTime.UtcNow
+        Dim istZone As TimeZoneInfo
+        Try
+            istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")
+        Catch
+            istZone = TimeZoneInfo.CreateCustomTimeZone("IST", New TimeSpan(5, 30, 0), "India Standard Time", "India Standard Time")
+        End Try
+        Dim istNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, istZone)
+
+        ' Find all Approved requests where inventory has not been released yet
+        Dim dtRequests As DataTable = Database.ExecuteDataTable(
+            "SELECT Id, RequestNumber, UserId, EndDate, Status FROM RentalRequests WHERE Status=@status AND (InventoryReleased = 0 OR InventoryReleased IS NULL)",
+            New SQLiteParameter("@status", CInt(RequestStatus.Approved)))
+
         Dim releasedCount As Integer = 0
-        Dim requestsToUpdate As New Dictionary(Of Integer, List(Of DataRow))()
-        For Each row As DataRow In dtExpired.Rows
-            Dim reqId As Integer = Convert.ToInt32(row("RequestId"))
-            If Not requestsToUpdate.ContainsKey(reqId) Then
-                requestsToUpdate(reqId) = New List(Of DataRow)()
-            End If
-            requestsToUpdate(reqId).Add(row)
-        Next
-        
-        Dim nowStr As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
-        
-        For Each kvp In requestsToUpdate
-            Dim reqId As Integer = kvp.Key
-            Dim rows As List(Of DataRow) = kvp.Value
-            Dim requestNumber As String = rows(0)("RequestNumber").ToString()
-            Dim userId As String = rows(0)("UserId").ToString()
-            Dim reqStatus As Integer = Convert.ToInt32(rows(0)("Status"))
-            
-            For Each row In rows
-                Dim allocId As Integer = Convert.ToInt32(row("AllocationId"))
-                Dim itemId As Integer = Convert.ToInt32(row("InventoryItemId"))
-                Dim qty As Integer = Convert.ToInt32(row("AllocatedQuantity"))
-                
-                Database.ExecuteNonQuery("UPDATE InventoryItems SET ReservedQuantity = MAX(0, ReservedQuantity - @qty), UpdatedAt = @now WHERE Id = @itemId",
-                                         New SQLiteParameter("@qty", qty),
-                                         New SQLiteParameter("@now", nowStr),
-                                         New SQLiteParameter("@itemId", itemId))
-                                         
-                Database.ExecuteNonQuery("UPDATE InventoryAllocations SET Status = 'Released' WHERE AllocationId = @allocId",
-                                         New SQLiteParameter("@allocId", allocId))
-                                         
-                Database.ExecuteNonQuery("INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Release', @qty, @notes, @now)",
-                                         New SQLiteParameter("@itemId", itemId),
-                                         New SQLiteParameter("@qty", qty),
-                                         New SQLiteParameter("@notes", "Auto-released: allocation expired. Request #" & requestNumber),
-                                         New SQLiteParameter("@now", nowStr))
-                                         
+        Dim nowStr As String = utcNow.ToString("yyyy-MM-dd HH:mm:ss")
+
+        For Each row As DataRow In dtRequests.Rows
+            Dim reqId As Integer = Convert.ToInt32(row("Id"))
+            Dim requestNumber As String = row("RequestNumber").ToString()
+            Dim userId As String = row("UserId").ToString()
+            Dim endDate As DateTime = DateTime.Parse(row("EndDate").ToString())
+
+            ' Release condition: istNow >= EndDate.Date.AddDays(1).AddHours(6)
+            If istNow >= endDate.Date.AddDays(1).AddHours(6) Then
+                ' Get active allocations for this request
+                Dim dtAlloc As DataTable = Database.ExecuteDataTable(
+                    "SELECT AllocationId, InventoryItemId, AllocatedQuantity FROM InventoryAllocations WHERE RequestId=@rid AND (Status='Approved' OR Status='Reserved')",
+                    New SQLiteParameter("@rid", reqId))
+
+                For Each allocRow As DataRow In dtAlloc.Rows
+                    Dim allocId As Integer = Convert.ToInt32(allocRow("AllocationId"))
+                    Dim itemId As Integer = Convert.ToInt32(allocRow("InventoryItemId"))
+                    Dim qty As Integer = Convert.ToInt32(allocRow("AllocatedQuantity"))
+
+                    ' 1. ReservedQty = MAX(0, ReservedQuantity - AllocatedQty)
+                    Database.ExecuteNonQuery(
+                        "UPDATE InventoryItems SET ReservedQuantity = MAX(0, ReservedQuantity - @qty), UpdatedAt = @now WHERE Id = @itemId",
+                        New SQLiteParameter("@qty", qty),
+                        New SQLiteParameter("@now", nowStr),
+                        New SQLiteParameter("@itemId", itemId))
+
+                    ' 2. Mark allocation as Released
+                    Database.ExecuteNonQuery(
+                        "UPDATE InventoryAllocations SET Status = 'Released' WHERE AllocationId = @allocId",
+                        New SQLiteParameter("@allocId", allocId))
+
+                    ' 3. Log transaction
+                    Database.ExecuteNonQuery(
+                        "INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Release', @qty, @notes, @now)",
+                        New SQLiteParameter("@itemId", itemId),
+                        New SQLiteParameter("@qty", qty),
+                        New SQLiteParameter("@notes", "Auto-release: rental period ended (EndDate " & endDate.ToString("dd-MMM-yyyy") & "). Request #" & requestNumber),
+                        New SQLiteParameter("@now", nowStr))
+                Next
+
+                ' 4. Mark request as InventoryReleased = 1, InventoryReleasedAt = now
+                Database.ExecuteNonQuery(
+                    "UPDATE RentalRequests SET InventoryReleased = 1, InventoryReleasedAt = @releasedAt WHERE Id = @id",
+                    New SQLiteParameter("@releasedAt", nowStr),
+                    New SQLiteParameter("@id", reqId))
+
+                ' 5. Send notification to requester
+                NotificationService.CreateNotification(userId,
+                    "Rental Period Ended — Inventory Released",
+                    "Your rental request #" & requestNumber & " (period: " &
+                    endDate.ToString("dd-MMM-yyyy") & ") has ended. " &
+                    "All allocated inventory has been automatically released back to stock.")
+
                 releasedCount += 1
-            Next
-            
-            If reqStatus = CInt(RequestStatus.Approved) OrElse reqStatus = CInt(RequestStatus.Pending) Then
-                Database.ExecuteNonQuery("UPDATE RentalRequests SET Status = @status, ReviewedAt = @now, ReviewedByEmployeeId = 'SYSTEM' WHERE Id = @id",
-                                         New SQLiteParameter("@status", CInt(RequestStatus.Returned)),
-                                         New SQLiteParameter("@now", nowStr),
-                                         New SQLiteParameter("@id", reqId))
-                                         
-                NotificationService.CreateNotification(userId, 
-                                                       "Rental Period Ended — Items Released ✓", 
-                                                       "Your rental request #" & requestNumber & " has ended. All allocated inventory has been automatically released back to stock. Thank you!")
             End If
         Next
-        
+
         Return releasedCount
     End Function
 
@@ -626,58 +662,112 @@ Public Class RentalService
         ' Self-approval block
         If req.UserId = approverId Then Return New ServiceResult(False, "Self-approval is not allowed.")
 
-        Dim approverEmpId As Object = Database.ExecuteScalar("SELECT EmployeeId FROM AspNetUsers WHERE Id=@id", New SQLiteParameter("@id", approverId))
-        Dim empId As String = If(approverEmpId IsNot Nothing, approverEmpId.ToString(), "")
-        Dim now As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+        Dim expectedStage As ApprovalStage
+        Select Case approverRole
+            Case "HOD"        : expectedStage = ApprovalStage.PendingHOD
+            Case "GM"         : expectedStage = ApprovalStage.PendingGM
+            Case "SuperAdmin" : expectedStage = ApprovalStage.PendingHR
+            Case Else         : expectedStage = ApprovalStage.PendingHOD
+        End Select
 
-        If approverRole = "HOD" AndAlso req.ApprovalStage = ApprovalStage.PendingHOD Then
-            If req.GrandTotal > 10000 Then
-                ' Escalate to GM
-                Database.ExecuteNonQuery("UPDATE RentalRequests SET ApprovalStage=@st, HODApprovedAt=@now, HODApprovedByEmployeeId=@eid WHERE Id=@id",
-                    New SQLiteParameter("@st", CInt(ApprovalStage.PendingGM)),
-                    New SQLiteParameter("@now", now),
-                    New SQLiteParameter("@eid", empId),
-                    New SQLiteParameter("@id", requestId))
-                NotificationService.CreateNotification(req.UserId, "Request Escalated to GM", "Your request " & req.RequestNumber & " has been approved by HOD and escalated to GM.")
-                Return New ServiceResult(True, "Approved by HOD. Escalated to GM for high-value request.")
-            Else
-                ' Escalate to HR (SuperAdmin)
-                Database.ExecuteNonQuery("UPDATE RentalRequests SET ApprovalStage=@st, HODApprovedAt=@now, HODApprovedByEmployeeId=@eid WHERE Id=@id",
-                    New SQLiteParameter("@st", CInt(ApprovalStage.PendingHR)),
-                    New SQLiteParameter("@now", now),
-                    New SQLiteParameter("@eid", empId),
-                    New SQLiteParameter("@id", requestId))
-                NotificationService.CreateNotification(req.UserId, "HOD Approved", "Your request " & req.RequestNumber & " has been approved by HOD. Awaiting HR approval.")
-                Return New ServiceResult(True, "Approved by HOD. Awaiting HR (SuperAdmin) final approval.")
-            End If
-
-        ElseIf approverRole = "GM" AndAlso req.ApprovalStage = ApprovalStage.PendingGM Then
-            ' GM Approval is terminal for requests above threshold (matching MVC)
-            Database.ExecuteNonQuery("UPDATE RentalRequests SET Status=@st, ApprovalStage=@as, GMApprovedAt=@now, GMApprovedByEmployeeId=@eid, ReviewedAt=@now, ReviewedByEmployeeId=@eid WHERE Id=@id",
-                New SQLiteParameter("@st", CInt(RequestStatus.Approved)),
-                New SQLiteParameter("@as", CInt(ApprovalStage.Approved)),
-                New SQLiteParameter("@now", now),
-                New SQLiteParameter("@eid", empId),
-                New SQLiteParameter("@id", requestId))
-            ' Convert reserved allocations to approved
-            Database.ExecuteNonQuery("UPDATE InventoryAllocations SET Status='Approved' WHERE RequestId=@rid", New SQLiteParameter("@rid", requestId))
-            NotificationService.CreateNotification(req.UserId, "Request Approved", "Your request " & req.RequestNumber & " has been fully approved by GM!")
-            Return New ServiceResult(True, "Request fully approved by GM.")
-
-        ElseIf approverRole = "SuperAdmin" AndAlso (req.ApprovalStage = ApprovalStage.PendingHR OrElse req.ApprovalStage = ApprovalStage.PendingHOD) Then
-            Database.ExecuteNonQuery("UPDATE RentalRequests SET Status=@st, ApprovalStage=@as, HRApprovedAt=@now, HRApprovedByEmployeeId=@eid, ReviewedAt=@now, ReviewedByEmployeeId=@eid WHERE Id=@id",
-                New SQLiteParameter("@st", CInt(RequestStatus.Approved)),
-                New SQLiteParameter("@as", CInt(ApprovalStage.Approved)),
-                New SQLiteParameter("@now", now),
-                New SQLiteParameter("@eid", empId),
-                New SQLiteParameter("@id", requestId))
-            ' Convert reserved allocations to approved
-            Database.ExecuteNonQuery("UPDATE InventoryAllocations SET Status='Approved' WHERE RequestId=@rid", New SQLiteParameter("@rid", requestId))
-            NotificationService.CreateNotification(req.UserId, "Request Approved", "Your request " & req.RequestNumber & " has been fully approved!")
-            Return New ServiceResult(True, "Request fully approved.")
+        If req.ApprovalStage <> expectedStage Then
+            Return New ServiceResult(False, "This request is currently at stage '" & req.ApprovalStage.ToString() & "' and cannot be approved by a " & approverRole & ".")
         End If
 
-        Return New ServiceResult(False, "Cannot approve at this stage with your current role.")
+        Dim approverEmpId As Object = Database.ExecuteScalar("SELECT EmployeeId FROM AspNetUsers WHERE Id=@id", New SQLiteParameter("@id", approverId))
+        Dim empId As String = If(approverEmpId IsNot Nothing, approverEmpId.ToString(), "")
+        Dim nowStr As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+
+        ' 1. Determine next stage or final approval
+        Dim nextStage As ApprovalStage? = Nothing
+        Select Case req.ApprovalStage
+            Case ApprovalStage.PendingHOD
+                ' Record HOD approval
+                Database.ExecuteNonQuery("UPDATE RentalRequests SET HODApprovedAt=@now, HODApprovedByEmployeeId=@eid WHERE Id=@id",
+                    New SQLiteParameter("@now", nowStr), New SQLiteParameter("@eid", empId), New SQLiteParameter("@id", requestId))
+                
+                If req.GrandTotal > 10000 Then
+                    nextStage = ApprovalStage.PendingGM
+                Else
+                    nextStage = ApprovalStage.PendingHR
+                End If
+
+            Case ApprovalStage.PendingGM
+                ' Record GM approval
+                Database.ExecuteNonQuery("UPDATE RentalRequests SET GMApprovedAt=@now, GMApprovedByEmployeeId=@eid WHERE Id=@id",
+                    New SQLiteParameter("@now", nowStr), New SQLiteParameter("@eid", empId), New SQLiteParameter("@id", requestId))
+                
+                nextStage = ApprovalStage.PendingHR
+
+            Case ApprovalStage.PendingHR
+                ' Record HR approval (terminal)
+                Database.ExecuteNonQuery("UPDATE RentalRequests SET HRApprovedAt=@now, HRApprovedByEmployeeId=@eid WHERE Id=@id",
+                    New SQLiteParameter("@now", nowStr), New SQLiteParameter("@eid", empId), New SQLiteParameter("@id", requestId))
+                
+                nextStage = Nothing
+        End Select
+
+        ' 2. Handle advance or final approval
+        If nextStage.HasValue Then
+            ' Advance stage
+            Database.ExecuteNonQuery("UPDATE RentalRequests SET ApprovalStage=@st WHERE Id=@id",
+                New SQLiteParameter("@st", CInt(nextStage.Value)),
+                New SQLiteParameter("@id", requestId))
+
+            Dim nextRole As String = If(nextStage.Value = ApprovalStage.PendingGM, "GM", "SuperAdmin")
+            NotificationService.CreateNotification(req.UserId, "Request Update — Stage Approved",
+                "Your request " & req.RequestNumber & " was approved by " & approverRole & ". Next: awaiting " & nextRole & " approval.")
+            Return New ServiceResult(True, "Approved by " & approverRole & ". Forwarded to " & nextRole & " for next approval.")
+        Else
+            ' Final Approval: check stock availability first!
+            Dim items As List(Of RentalRequestItem) = GetRequestItems(requestId)
+            For Each item In items
+                Dim available = GetAvailableQuantityForDates(item.InventoryItemId, req.StartDate, req.EndDate, req.Id)
+                If item.RequestedQuantity > available Then
+                    Return New ServiceResult(False, "Requested inventory for '" & item.ItemName & "' is no longer available for the selected date range.")
+                End If
+            Next
+
+            ' Allocate stock!
+            For Each item In items
+                Dim available = GetAvailableQuantityForDates(item.InventoryItemId, req.StartDate, req.EndDate, req.Id)
+                Dim canAllocate = Math.Min(item.RequestedQuantity, available)
+
+                If canAllocate > 0 Then
+                    Database.ExecuteNonQuery("UPDATE InventoryItems SET ReservedQuantity=ReservedQuantity+@qty, UpdatedAt=@now WHERE Id=@iid",
+                        New SQLiteParameter("@qty", canAllocate),
+                        New SQLiteParameter("@now", nowStr),
+                        New SQLiteParameter("@iid", item.InventoryItemId))
+
+                    Database.ExecuteNonQuery("INSERT INTO InventoryAllocations(RequestId,InventoryItemId,AllocatedQuantity,StartDate,EndDate,Status) VALUES(@rid,@iid,@qty,@sd,@ed,@status)",
+                        New SQLiteParameter("@rid", requestId),
+                        New SQLiteParameter("@iid", item.InventoryItemId),
+                        New SQLiteParameter("@qty", canAllocate),
+                        New SQLiteParameter("@sd", req.StartDate.ToString("yyyy-MM-dd")),
+                        New SQLiteParameter("@ed", req.EndDate.ToString("yyyy-MM-dd")),
+                        New SQLiteParameter("@status", "Approved"))
+
+                    Database.ExecuteNonQuery("INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Allocation', @qty, @notes, @now)",
+                                             New SQLiteParameter("@itemId", item.InventoryItemId),
+                                             New SQLiteParameter("@qty", canAllocate),
+                                             New SQLiteParameter("@notes", "Allocated for request " & req.RequestNumber),
+                                             New SQLiteParameter("@now", nowStr))
+                End If
+            Next
+
+            ' Finalize request details
+            Database.ExecuteNonQuery("UPDATE RentalRequests SET Status=@st, ApprovalStage=@as, ReviewedAt=@now, ReviewedByEmployeeId=@eid WHERE Id=@id",
+                New SQLiteParameter("@st", CInt(RequestStatus.Approved)),
+                New SQLiteParameter("@as", CType(ApprovalStage.Approved, Integer)),
+                New SQLiteParameter("@now", nowStr),
+                New SQLiteParameter("@eid", empId),
+                New SQLiteParameter("@id", requestId))
+
+            NotificationService.CreateNotification(req.UserId, "Request Fully Approved ✓",
+                "Your rental request #" & req.RequestNumber & " has been fully approved and inventory allocated.")
+
+            Return New ServiceResult(True, "Request fully approved and inventory allocated.")
+        End If
     End Function
 
     Public Shared Function RejectRequest(requestId As Integer, reason As String, rejectedByEmpId As String) As Boolean
@@ -692,39 +782,59 @@ Public Class RentalService
             New SQLiteParameter("@now", now),
             New SQLiteParameter("@eid", rejectedByEmpId),
             New SQLiteParameter("@id", requestId))
-        ' Release reserved inventory
-        ReleaseReservations(requestId)
+        
+        ' Release reserved inventory only if the request was approved
+        If req.Status = RequestStatus.Approved Then
+            ReleaseReservations(requestId)
+        End If
         NotificationService.CreateNotification(req.UserId, "Request Rejected", "Your request " & req.RequestNumber & " was rejected. Reason: " & reason)
         Return True
     End Function
 
     Public Shared Function CancelRequest(requestId As Integer, cancelledByUserName As String) As Boolean
+        Dim req As RentalRequest = GetRequestById(requestId)
+        If req Is Nothing Then Return False
         Dim now As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
         Database.ExecuteNonQuery("UPDATE RentalRequests SET Status=@st, ReviewedAt=@now, ReviewedByEmployeeId=@eid WHERE Id=@id",
             New SQLiteParameter("@st", CInt(RequestStatus.Cancelled)),
             New SQLiteParameter("@now", now),
             New SQLiteParameter("@eid", cancelledByUserName),
             New SQLiteParameter("@id", requestId))
-        ReleaseReservations(requestId)
+        
+        ' Release reserved inventory only if the request was approved
+        If req.Status = RequestStatus.Approved Then
+            ReleaseReservations(requestId)
+        End If
         Return True
     End Function
+
     Private Shared Sub ReleaseReservations(requestId As Integer)
-        Dim items As List(Of RentalRequestItem) = GetRequestItems(requestId)
         Dim nowStr As String = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
-        For Each item As RentalRequestItem In items
+        
+        ' Retrieve allocations that were actually approved/reserved for this request
+        Dim dtAlloc As DataTable = Database.ExecuteDataTable(
+            "SELECT InventoryItemId, AllocatedQuantity FROM InventoryAllocations WHERE RequestId=@rid AND (Status='Approved' OR Status='Reserved')",
+            New SQLiteParameter("@rid", requestId))
+            
+        For Each row As DataRow In dtAlloc.Rows
+            Dim itemId As Integer = Convert.ToInt32(row("InventoryItemId"))
+            Dim qty As Integer = Convert.ToInt32(row("AllocatedQuantity"))
+            
             Database.ExecuteNonQuery("UPDATE InventoryItems SET ReservedQuantity=MAX(0,ReservedQuantity-@qty), UpdatedAt=@now WHERE Id=@iid",
-                New SQLiteParameter("@qty", item.RequestedQuantity),
+                New SQLiteParameter("@qty", qty),
                 New SQLiteParameter("@now", nowStr),
-                New SQLiteParameter("@iid", item.InventoryItemId))
+                New SQLiteParameter("@iid", itemId))
                 
             Database.ExecuteNonQuery("INSERT INTO InventoryTransactions (InventoryItemId, TransactionType, Quantity, Notes, CreatedAt) VALUES (@itemId, 'Release', @qty, @notes, @now)",
-                                     New SQLiteParameter("@itemId", item.InventoryItemId),
-                                     New SQLiteParameter("@qty", item.RequestedQuantity),
+                                     New SQLiteParameter("@itemId", itemId),
+                                     New SQLiteParameter("@qty", qty),
                                      New SQLiteParameter("@notes", "Released allocation due to rejection/cancellation of request ID " & requestId),
                                      New SQLiteParameter("@now", nowStr))
         Next
+        
         Database.ExecuteNonQuery("UPDATE InventoryAllocations SET Status='Cancelled' WHERE RequestId=@rid", New SQLiteParameter("@rid", requestId))
     End Sub
+
     Private Shared Function MapRequests(dt As DataTable) As List(Of RentalRequest)
         Dim list As New List(Of RentalRequest)()
         For Each row As DataRow In dt.Rows
@@ -758,7 +868,9 @@ Public Class RentalService
             .CreatedAt = DateTime.Parse(row("CreatedAt").ToString()),
             .ReviewedAt = If(row("ReviewedAt") Is DBNull.Value, Nothing, CType(DateTime.Parse(row("ReviewedAt").ToString()), DateTime?)),
             .ReviewedByEmployeeId = If(row("ReviewedByEmployeeId") Is DBNull.Value, "", row("ReviewedByEmployeeId").ToString()),
-            .RejectionReason = If(row("RejectionReason") Is DBNull.Value, "", row("RejectionReason").ToString())
+            .RejectionReason = If(row("RejectionReason") Is DBNull.Value, "", row("RejectionReason").ToString()),
+            .InventoryReleased = If(row("InventoryReleased") Is DBNull.Value, False, Convert.ToBoolean(row("InventoryReleased"))),
+            .InventoryReleasedAt = If(row("InventoryReleasedAt") Is DBNull.Value, Nothing, CType(DateTime.Parse(row("InventoryReleasedAt").ToString()), DateTime?))
         }
     End Function
 End Class
@@ -902,7 +1014,9 @@ Public Class ReportService
                 .EndDate = DateTime.Parse(row("EndDate").ToString()),
                 .GrandTotal = Convert.ToDecimal(row("GrandTotal")),
                 .Status = CType(Convert.ToInt32(row("Status")), RequestStatus),
-                .CreatedAt = DateTime.Parse(row("CreatedAt").ToString())
+                .CreatedAt = DateTime.Parse(row("CreatedAt").ToString()),
+                .InventoryReleased = If(row("InventoryReleased") Is DBNull.Value, False, Convert.ToBoolean(row("InventoryReleased"))),
+                .InventoryReleasedAt = If(row("InventoryReleasedAt") Is DBNull.Value, Nothing, CType(DateTime.Parse(row("InventoryReleasedAt").ToString()), DateTime?))
             })
         Next
 
