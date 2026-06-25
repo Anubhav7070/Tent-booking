@@ -49,7 +49,16 @@ Public Class Reports
             Case RequestStatus.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case RequestStatus.Cancelled : Return "<span class=""badge bg-secondary"">Cancelled</span>"
             Case RequestStatus.Returned : Return "<span class=""badge"" style=""background:#198754;color:#fff;""><i class=""bi bi-arrow-return-left me-1""></i>Returned — Stock Released</span>"
-            Case Else : Return "<span class=""badge bg-warning text-dark"">Pending</span>"
+            Case Else
+                If r.ApprovalStage = ApprovalStage.PendingHOD Then
+                    Return "<span class=""badge bg-warning text-dark"">Pending HOD (" & AuthHelper.GetHODDisplayName(r.UserDepartment) & ")</span>"
+                ElseIf r.ApprovalStage = ApprovalStage.PendingGM Then
+                    Return "<span class=""badge bg-warning text-dark"">Pending GM (" & AuthHelper.GetGMDisplayName() & ")</span>"
+                ElseIf r.ApprovalStage = ApprovalStage.PendingHR Then
+                    Return "<span class=""badge bg-warning text-dark"">Pending HR (" & AuthHelper.GetHRDisplayName() & ")</span>"
+                Else
+                    Return "<span class=""badge bg-warning text-dark"">Pending</span>"
+                End If
         End Select
     End Function
 End Class

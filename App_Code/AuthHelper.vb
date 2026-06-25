@@ -147,4 +147,54 @@ Public Class AuthHelper
         If String.IsNullOrEmpty(userId) Then Return Nothing
         Return UserService.GetUserById(userId)
     End Function
+
+    ' Get HOD Employee ID for a department
+    Public Shared Function GetHODDisplayName(dept As String) As String
+        If String.IsNullOrEmpty(dept) Then Return ""
+        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
+                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
+                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
+                            "WHERE r.Name = 'HOD' AND u.Department = @dept LIMIT 1"
+        Dim result As Object = Database.ExecuteScalar(sql, New SQLiteParameter("@dept", dept))
+        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
+            Return result.ToString()
+        End If
+
+        ' Fallback to any HOD if department HOD is not found
+        Dim sqlFallback As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
+                                    "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
+                                    "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
+                                    "WHERE r.Name = 'HOD' LIMIT 1"
+        Dim resultFallback As Object = Database.ExecuteScalar(sqlFallback)
+        If resultFallback IsNot Nothing AndAlso Not IsDBNull(resultFallback) Then
+            Return resultFallback.ToString()
+        End If
+        Return "HOD"
+    End Function
+
+    ' Get GM Employee ID
+    Public Shared Function GetGMDisplayName() As String
+        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
+                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
+                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
+                            "WHERE r.Name = 'GM' LIMIT 1"
+        Dim result As Object = Database.ExecuteScalar(sql)
+        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
+            Return result.ToString()
+        End If
+        Return "20000001"
+    End Function
+
+    ' Get HR Employee ID
+    Public Shared Function GetHRDisplayName() As String
+        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
+                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
+                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
+                            "WHERE r.Name = 'SuperAdmin' LIMIT 1"
+        Dim result As Object = Database.ExecuteScalar(sql)
+        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
+            Return result.ToString()
+        End If
+        Return "00000001"
+    End Function
 End Class

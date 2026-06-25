@@ -16,7 +16,7 @@
                             <td><%# DirectCast(Eval("EventDate"),DateTime).ToString("dd MMM yyyy") %></td>
                             <td><small class="text-muted"><%# DirectCast(Eval("StartDate"),DateTime).ToString("dd MMM") %> – <%# DirectCast(Eval("EndDate"),DateTime).ToString("dd MMM yyyy") %></small></td>
                             <td class="fw-semibold">₹<%# String.Format("{0:N2}", Eval("GrandTotal")) %></td>
-                            <td><%# GetStageBadge(CInt(Eval("ApprovalStage"))) %></td>
+                            <td><%# GetStageBadge(Container.DataItem) %></td>
                             <td><%# GetStatusBadge(Container.DataItem) %></td>
                             <td><small class="text-muted"><%# DirectCast(Eval("CreatedAt"),DateTime).ToString("dd MMM yy") %></small></td>
                             <td>

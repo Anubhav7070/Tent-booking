@@ -96,11 +96,11 @@ Public Class AdminDashboard
         If r.Status = RequestStatus.Pending Then
             Dim stageStr As String = ""
             If r.ApprovalStage = ApprovalStage.PendingHOD Then
-                stageStr = "PENDING TO HOD (" & GetHODDisplayName(r.UserDepartment) & ")"
+                stageStr = "PENDING TO HOD (" & AuthHelper.GetHODDisplayName(r.UserDepartment) & ")"
             ElseIf r.ApprovalStage = ApprovalStage.PendingGM Then
-                stageStr = "PENDING TO GM (" & GetGMDisplayName() & ")"
+                stageStr = "PENDING TO GM (" & AuthHelper.GetGMDisplayName() & ")"
             ElseIf r.ApprovalStage = ApprovalStage.PendingHR Then
-                stageStr = "PENDING TO HR (" & GetHRDisplayName() & ")"
+                stageStr = "PENDING TO HR (" & AuthHelper.GetHRDisplayName() & ")"
             Else
                 stageStr = "PENDING"
             End If
@@ -126,52 +126,6 @@ Public Class AdminDashboard
         End If
     End Function
 
-    Private Function GetHODDisplayName(dept As String) As String
-        If String.IsNullOrEmpty(dept) Then Return ""
-        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
-                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
-                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
-                            "WHERE r.Name = 'HOD' AND u.Department = @dept LIMIT 1"
-        Dim result As Object = Database.ExecuteScalar(sql, New SQLiteParameter("@dept", dept))
-        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
-            Return result.ToString()
-        End If
-
-        ' Fallback to any HOD if department HOD is not found
-        Dim sqlFallback As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
-                                    "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
-                                    "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
-                                    "WHERE r.Name = 'HOD' LIMIT 1"
-        Dim resultFallback As Object = Database.ExecuteScalar(sqlFallback)
-        If resultFallback IsNot Nothing AndAlso Not IsDBNull(resultFallback) Then
-            Return resultFallback.ToString()
-        End If
-        Return "HOD"
-    End Function
-
-    Private Function GetGMDisplayName() As String
-        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
-                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
-                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
-                            "WHERE r.Name = 'GM' LIMIT 1"
-        Dim result As Object = Database.ExecuteScalar(sql)
-        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
-            Return result.ToString()
-        End If
-        Return "20000001"
-    End Function
-
-    Private Function GetHRDisplayName() As String
-        Dim sql As String = "SELECT u.EmployeeId FROM AspNetUsers u " &
-                            "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " &
-                            "JOIN AspNetRoles r ON ur.RoleId = r.Id " &
-                            "WHERE r.Name = 'SuperAdmin' LIMIT 1"
-        Dim result As Object = Database.ExecuteScalar(sql)
-        If result IsNot Nothing AndAlso Not IsDBNull(result) Then
-            Return result.ToString()
-        End If
-        Return "00000001"
-    End Function
 
     Private Function GetUserDisplayNameByEmpId(empId As String) As String
         If String.IsNullOrEmpty(empId) Then Return ""

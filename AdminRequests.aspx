@@ -42,7 +42,7 @@
                                 <td><%# DirectCast(Eval("EventDate"),DateTime).ToString("dd MMM yyyy") %></td>
                                 <td class="fw-semibold">₹<%# String.Format("{0:N2}", Eval("GrandTotal")) %></td>
                                 <td><span class="badge bg-light text-dark border"><%# Eval("SubmittedByRole") %></span></td>
-                                <td><%# GetStageBadge(CInt(Eval("ApprovalStage"))) %></td>
+                                <td><%# GetStageBadge(Container.DataItem) %></td>
                                 <td><%# GetStatusBadge(Container.DataItem) %></td>
                                 <td><small class="text-muted"><%# DirectCast(Eval("CreatedAt"),DateTime).ToString("dd MMM yy") %></small></td>
                                 <td><a href='AdminRequestDetails.aspx?id=<%# Eval("Id") %>' class="btn btn-sm btn-outline-primary">Details</a></td>

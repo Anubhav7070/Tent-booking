@@ -28,11 +28,13 @@ Public Class MyRequests
             Case Else : Return "<span class=""badge bg-warning text-dark"">Pending</span>"
         End Select
     End Function
-    Protected Function GetStageBadge(stage As Integer) As String
-        Select Case CType(stage, ApprovalStage)
-            Case ApprovalStage.PendingHOD : Return "<span class=""badge bg-info"">Pending HOD</span>"
-            Case ApprovalStage.PendingGM : Return "<span class=""badge bg-warning text-dark"">Pending GM</span>"
-            Case ApprovalStage.PendingHR : Return "<span class=""badge bg-primary"">Pending HR</span>"
+    Protected Function GetStageBadge(dataItem As Object) As String
+        Dim r As RentalRequest = TryCast(dataItem, RentalRequest)
+        If r Is Nothing Then Return ""
+        Select Case r.ApprovalStage
+            Case ApprovalStage.PendingHOD : Return "<span class=""badge bg-info"">Pending HOD (" & AuthHelper.GetHODDisplayName(r.UserDepartment) & ")</span>"
+            Case ApprovalStage.PendingGM : Return "<span class=""badge bg-warning text-dark"">Pending GM (" & AuthHelper.GetGMDisplayName() & ")</span>"
+            Case ApprovalStage.PendingHR : Return "<span class=""badge bg-primary"">Pending HR (" & AuthHelper.GetHRDisplayName() & ")</span>"
             Case ApprovalStage.Approved : Return "<span class=""badge bg-success"">All Approved</span>"
             Case ApprovalStage.Rejected : Return "<span class=""badge bg-danger"">Rejected</span>"
             Case Else : Return "<span class=""badge bg-secondary"">—</span>"
