@@ -485,7 +485,7 @@ Public Class RentalService
             New SQLiteParameter("@raid", If(isAutoApprove, autoApproverEmpId, "")),
             New SQLiteParameter("@ca", nowStr))
 
-        Dim newId As Object = Database.ExecuteScalar("SELECT last_insert_rowid()")
+        Dim newId As Object = Database.ExecuteScalar("SELECT Id FROM RentalRequests WHERE RequestNumber=@rn", New SQLiteParameter("@rn", reqNumber))
         Dim requestId As Integer = Convert.ToInt32(newId)
 
         ' Insert request items

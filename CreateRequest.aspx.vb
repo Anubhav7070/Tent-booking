@@ -15,7 +15,16 @@ Public Class CreateRequest
             Page.Form.Enctype = "multipart/form-data"
         End If
 
+        ' Set client-side readonly attribute on StartDate to prevent editing without blocking postback values
+        StartDate.Attributes("readonly") = "readonly"
+
         If Not IsPostBack Then
+            Dim tomorrowStr As String = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")
+            Dim dayAfterTomorrowStr As String = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd")
+            EventDate.Attributes("min") = tomorrowStr
+            StartDate.Attributes("min") = tomorrowStr
+            EndDate.Attributes("min") = dayAfterTomorrowStr
+
             EventDate.Text = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")
             StartDate.Text = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")
             EndDate.Text = DateTime.Today.AddDays(8).ToString("yyyy-MM-dd")
@@ -66,6 +75,7 @@ Public Class CreateRequest
             Return
         End If
 
+        Dim docPath As String = ""
         Dim ext As String = System.IO.Path.GetExtension(fileDocument.FileName).ToLower()
         Dim allowedExtensions() As String = {".pdf", ".png", ".jpg", ".jpeg"}
         If Not allowedExtensions.Contains(ext) Then
@@ -80,7 +90,6 @@ Public Class CreateRequest
             Return
         End If
 
-        Dim docPath As String = ""
         Try
             Dim uploadsFolder As String = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uploads", "documents")
             If Not System.IO.Directory.Exists(uploadsFolder) Then
