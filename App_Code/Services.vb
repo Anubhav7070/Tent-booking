@@ -221,7 +221,7 @@ Public Class InventoryService
 
     Public Shared Function GetInventoryForRequest() As List(Of InventoryItem)
         Dim dt As DataTable = Database.ExecuteDataTable(
-            "SELECT i.*, c.Name AS CategoryName FROM InventoryItems i LEFT JOIN InventoryCategories c ON i.CategoryId=c.Id WHERE i.IsActive=1 AND (i.TotalQuantity - i.ReservedQuantity) > 0 ORDER BY i.Name")
+            "SELECT i.*, c.Name AS CategoryName FROM InventoryItems i LEFT JOIN InventoryCategories c ON i.CategoryId=c.Id WHERE i.IsActive=1 ORDER BY i.Name")
         Return MapItems(dt)
     End Function
 

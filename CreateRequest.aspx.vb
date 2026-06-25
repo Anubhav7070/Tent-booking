@@ -128,10 +128,14 @@ Public Class CreateRequest
     Public Function GetAvailableItemsJson() As String
         Dim items = InventoryService.GetInventoryForRequest()
         Dim js As New JavaScriptSerializer()
+        
+        Dim tomorrow As DateTime = DateTime.Today.AddDays(7)
+        Dim dayAfter As DateTime = DateTime.Today.AddDays(8)
+        
         Dim mapped = items.Select(Function(i) New With {
             .Id = i.Id,
             .Name = i.Name,
-            .AvailableQuantity = i.AvailableQuantity,
+            .AvailableQuantity = RentalService.GetAvailableQuantityForDates(i.Id, tomorrow, dayAfter, 0),
             .CurrentPrice = i.CurrentPrice,
             .UnitType = i.UnitType
         }).ToList()
